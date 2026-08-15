@@ -1,0 +1,4 @@
+fastapi==0.139.2
+uvicorn==0.51.0
+wcferry==39.5.2.0
+

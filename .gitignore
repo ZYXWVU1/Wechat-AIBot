@@ -1,0 +1,12 @@
+.env
+.venv/
+__pycache__/
+*.py[cod]
+*.log
+.pytest_cache/
+.mypy_cache/
+
+# Runtime state and secrets
+data/
+windows_bridge/data/
+nas_backend/data/
