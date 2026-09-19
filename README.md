@@ -62,3 +62,74 @@ WeChatFerry 使用进程 Hook，原项目已经归档，并且依赖精确微信
 官方 API，存在客户端升级、登录限制、账号风控和项目停止工作的风险。不要使用主号，
 不要将 `8787`、`10086`、`10087` 或 RDP 暴露到公网。
 
+---
+
+# English Translation
+
+This is a layered bot project for a single WeChat account: the Windows VM runs only WeChat
+and WeChatFerry, while the Synology NAS handles message persistence, reply rules, AI calls,
+and the sending queue.
+
+## Included
+
+- `windows_bridge/`: a WCF bridge service with key-based authentication, source-IP firewall
+  integration, event persistence, a sending allowlist, rate limiting, and idempotency protection.
+- `nas_backend/`: a Docker backend that uses SQLite WAL to store messages, cursors, and the
+  outbox; it supports explicit allowlist rules for direct messages and `@` mentions in groups.
+- A generic Chat Completions HTTP AI adapter that can connect to services supporting this request format.
+- Persistent reading/input delays, reply chunking, retries, and cancellation of old pending reply
+  chunks when new messages arrive.
+- Offline unit tests that do not require WeChat, WCF, or an external API.
+
+## Default Safety State
+
+The initial configuration does not automatically send any WeChat messages:
+
+```text
+AUTO_REPLY_ENABLED=false
+DRY_RUN=true
+DIRECT_REPLY_ENABLED=false
+GROUP_REPLY_ENABLED=false
+AI_PROVIDER=disabled
+```
+
+The Windows side also only allows `filehelper` as a recipient by default. Enabling real contacts
+or group chats requires changing both the Windows allowlist and the NAS allowlist, so a single
+misconfiguration cannot directly send messages externally.
+
+## Architecture
+
+```text
+Friend/test group
+    ↓
+Windows VM: WeChat 3.9.12.51 x64 + WCF 39.5.2.0
+    ↓  HTTP 8787 / X-Bridge-Key / Windows firewall allows NAS IP only
+NAS Docker: policy → AI → SQLite outbox → bridge /send
+```
+
+## Getting Started
+
+1. Deploy the Windows bridge according to the [deployment guide](docs/DEPLOYMENT.md).
+2. Complete verification while keeping the read-only/File Transfer Assistant mode enabled.
+3. Deploy the NAS backend with `AI_PROVIDER=disabled` first, and confirm that messages continue
+   to be persisted.
+4. After configuring AI, keep `DRY_RUN=true` for a complete rehearsal.
+5. Allow only one test contact or test group, and change to `DRY_RUN=false` only at the end.
+
+See the [security guide](docs/SECURITY.md) for security boundaries and recovery procedures, and
+the [bridge API documentation](docs/BRIDGE_API.md) for the interface format.
+
+## Local Verification
+
+```powershell
+python -m unittest discover -s tests -v
+python -m compileall -q windows_bridge nas_backend tests
+```
+
+## Important Limitations
+
+WeChatFerry uses process hooking. The original project has been archived and depends on an exact
+WeChat version. It is not an official WeChat API, and there are risks related to client upgrades,
+login restrictions, account risk controls, and the project becoming unusable. Do not use your main
+account, and do not expose `8787`, `10086`, `10087`, or RDP to the public internet.
+
